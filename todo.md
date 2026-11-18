@@ -30,5 +30,5 @@
 - [x] Capture optional GPS coordinates (best-effort location context, e.g. lat/lon/altitude/GPS speed) alongside PID samples / fault triggers to enrich incident diagnostics.
 
 ## Phase 5 — UI & `VIRTUAL_BENCH` / Vehicle Validation
-- [ ] Build Jetpack Compose Material 3 UI with 4-tab `NavigationBar` (`Connect`, `Live`, `Recorder`, `Bench`), modal/sub-screens (`ProfileEditor`, `CaptureDetail`, `AT Console`), and global transport/VBAT status banner.
+- [x] Build Jetpack Compose Material 3 UI with 4-tab `NavigationBar` (`Connect`, `Live`, `Recorder`, `Bench`), modal/sub-screens (`ProfileEditor`, `CaptureDetail`, `AT Console`), and global transport/VBAT status banner.
 - [ ] Validate end-to-end against LilyGO `VIRTUAL_BENCH` (`GPIO 0`/`GPIO 14` & `AT+SIM:DTC=P0131`) and live 2003 Daewoo Kalos K-Line.
