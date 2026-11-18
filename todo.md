@@ -11,15 +11,15 @@
 - [x] Set up GitHub Actions CI (`.github/workflows/ci.yml`) running `./gradlew test` and `./gradlew lint`.
 
 ## Phase 2 — Transport Layer (`BLE` & `Wi-Fi TCP`)
-- [ ] Implement unified `ElmTransport` interface (in `:core:obd`) with clean connect/disconnect lifecycle, single-active-transport discipline, and `>` prompt framing.
-- [ ] Implement native Android BLE 5.0 GATT client (`BluetoothGatt` wrapped in Coroutines/`Flow`, `OBD2-ELM327`, `0xFFF0`/`0xFFE0` scan filter, runtime permissions, `requestMtu(256)`, `0xFFF1`/`0xFFE1` notifications).
-- [ ] Implement native Wi-Fi TCP client (`java.net.Socket` at `192.168.42.1:35000`, `TCP_NODELAY`, `ConnectivityManager` / `network.socketFactory` Wi-Fi `Network` binding).
-- [ ] Add transport unit tests (framing across split BLE notifications, prompt timeouts, clean reconnect).
+- [x] Implement unified `ElmTransport` interface (in `:core:obd`) with clean connect/disconnect lifecycle, single-active-transport discipline, and `>` prompt framing.
+- [x] Implement native Android BLE 5.0 GATT client (`BluetoothGatt` wrapped in Coroutines/`Flow`, `OBD2-ELM327`, `0xFFF0`/`0xFFE0` scan filter, runtime permissions, `requestMtu(256)`, `0xFFF1`/`0xFFE1` notifications).
+- [x] Implement native Wi-Fi TCP client (`java.net.Socket` at `192.168.42.1:35000`, `TCP_NODELAY`, `ConnectivityManager` / `network.socketFactory` Wi-Fi `Network` binding).
+- [x] Add transport unit tests (framing across split BLE notifications, prompt timeouts, clean reconnect).
 
 ## Phase 3 — ELM327 v1.5, OBD-II & KWP2000 Stack
-- [ ] Implement ELM327 v1.5 initialization sequence (`ATZ`, `ATE0`, `ATD0`, `ATH1`, `ATSP0`, `ATM0`, `ATS0`, `ATAT1`, `ATAL`, `ATST64`, `0100`, `ATRV`).
-- [ ] Implement CAN single-frame (`7E8064100...`) and ISO-TP multi-frame (`014\r0:...`) response parser + `Mode 01`/`02`/`03`/`04`/`07`/`09` decoders.
-- [ ] Add K-Line / KWP2000 polling cadence guard (`<= 8` PIDs for `10,400 baud` targets like 2003 Daewoo Kalos).
+- [x] Implement ELM327 v1.5 initialization sequence (`ATZ`, `ATE0`, `ATD0`, `ATH1`, `ATSP0`, `ATM0`, `ATS0`, `ATAT1`, `ATAL`, `ATST64`, `0100`, `ATRV`).
+- [x] Implement CAN single-frame (`7E8064100...`) and ISO-TP multi-frame (`014\r0:...`) response parser + `Mode 01`/`02`/`03`/`04`/`07`/`09` decoders.
+- [x] Add K-Line / KWP2000 polling cadence guard (`<= 8` PIDs for `10,400 baud` targets like 2003 Daewoo Kalos).
 
 ## Phase 4 — Configurable Pre/Post-Fault Context Capture
 - [ ] Implement editable local JSON DTC-to-PID rule profiles via `kotlinx.serialization` (including reference `P0131` O2 B1S1 profile) and Jetpack DataStore for recorder preferences.
