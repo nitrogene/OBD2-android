@@ -10,11 +10,14 @@ import android.bluetooth.BluetoothProfile
 import android.bluetooth.BluetoothStatusCodes
 import android.content.Context
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import com.nitrogene.obd2.core.obd.transport.ElmCommandExchange
 import com.nitrogene.obd2.core.obd.transport.ElmTransport
 import com.nitrogene.obd2.core.obd.transport.TransportDisconnectedException
 import com.nitrogene.obd2.core.obd.transport.TransportState
 import com.nitrogene.obd2.core.obd.transport.TransportType
+import com.nitrogene.obd2.diag.AppDiagLog
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -40,6 +43,7 @@ class BleElmTransport(
     override val state: StateFlow<TransportState> = _state.asStateFlow()
 
     private val exchange = ElmCommandExchange()
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     @Volatile
     private var gatt: BluetoothGatt? = null
@@ -56,6 +60,12 @@ class BleElmTransport(
     @Volatile
     private var writeDeferred: CompletableDeferred<Unit>? = null
 
+    @Volatile
+    private var retriedDiscoveryAfterRefresh: Boolean = false
+
+    @Volatile
+    private var servicesDiscovered: Boolean = false
+
     @SuppressLint("MissingPermission")
     override suspend fun connect() {
         if (!BlePermissions.hasConnectPermissions(context)) {
@@ -64,6 +74,9 @@ class BleElmTransport(
 
         val endpoint = "${device.name ?: BleConstants.DEFAULT_DEVICE_NAME} (${device.address})"
         _state.value = TransportState.Connecting(TransportType.BLE, endpoint)
+        retriedDiscoveryAfterRefresh = false
+        servicesDiscovered = false
+        AppDiagLog.log("BLE", "connectGatt() -> $endpoint bondState=${device.bondState}")
 
         val setupDone = CompletableDeferred<Unit>()
         readyDeferred = setupDone
@@ -92,6 +105,7 @@ class BleElmTransport(
 
     @SuppressLint("MissingPermission")
     override suspend fun disconnect() {
+        mainHandler.removeCallbacksAndMessages(null)
         val currentGatt = gatt
         gatt = null
         writeCharacteristic = null
@@ -153,6 +167,7 @@ class BleElmTransport(
         setupDone: CompletableDeferred<Unit>,
     ): BluetoothGattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
+            AppDiagLog.log("BLE", "onConnectionStateChange status=$status newState=$newState")
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 val err = TransportDisconnectedException("BLE GATT error status=$status")
                 setupDone.completeExceptionally(err)
@@ -162,11 +177,19 @@ class BleElmTransport(
             }
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
-                    if (!gatt.discoverServices()) {
-                        setupDone.completeExceptionally(
-                            TransportDisconnectedException("discoverServices() failed to start"),
-                        )
-                    }
+                    // Flush stale Android GATT cache and wait 800ms so ESP32 NimBLE finishes
+                    // its initial MTU exchange before service discovery starts.
+                    refreshGattCache(gatt)
+                    mainHandler.postDelayed(
+                        {
+                            if (this@BleElmTransport.gatt === gatt && !gatt.discoverServices()) {
+                                setupDone.completeExceptionally(
+                                    TransportDisconnectedException("discoverServices() failed to start"),
+                                )
+                            }
+                        },
+                        800L,
+                    )
                 }
 
                 BluetoothProfile.STATE_DISCONNECTED -> {
@@ -181,22 +204,46 @@ class BleElmTransport(
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
+            val svcList = gatt.services.joinToString { svc ->
+                val chars = svc.characteristics.joinToString(",") { it.uuid.toString().substring(4, 8) }
+                "${svc.uuid.toString().substring(4, 8)}[$chars]"
+            }
+            AppDiagLog.log("BLE", "onServicesDiscovered status=$status services=$svcList")
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 setupDone.completeExceptionally(
                     TransportDisconnectedException("Service discovery failed status=$status"),
                 )
                 return
             }
-            if (!gatt.requestMtu(BleConstants.REQUESTED_MTU)) {
+            val hasUart = gatt.getService(BleConstants.SERVICE_FFF0) != null ||
+                gatt.getService(BleConstants.SERVICE_FFE0) != null
+            if (!hasUart && !retriedDiscoveryAfterRefresh) {
+                retriedDiscoveryAfterRefresh = true
+                refreshGattCache(gatt)
+                mainHandler.postDelayed(
+                    {
+                        if (this@BleElmTransport.gatt === gatt) {
+                            gatt.discoverServices()
+                        }
+                    },
+                    500L,
+                )
+                return
+            }
+            servicesDiscovered = true
+            if (negotiatedPayloadSize >= 244 || !gatt.requestMtu(BleConstants.REQUESTED_MTU)) {
                 enableUartNotifications(gatt, setupDone)
             }
         }
 
         override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
+            AppDiagLog.log("BLE", "onMtuChanged mtu=$mtu status=$status servicesDiscovered=$servicesDiscovered")
             if (status == BluetoothGatt.GATT_SUCCESS && mtu > 3) {
                 negotiatedPayloadSize = mtu - 3
             }
-            enableUartNotifications(gatt, setupDone)
+            if (servicesDiscovered) {
+                enableUartNotifications(gatt, setupDone)
+            }
         }
 
         override fun onDescriptorWrite(
@@ -274,8 +321,12 @@ class BleElmTransport(
         }
 
         if (notifyChar == null || writeChar == null) {
+            val found = gatt.services.joinToString { it.uuid.toString().substring(4, 8) }
+            val bond = gatt.device.bondState
             setupDone.completeExceptionally(
-                TransportDisconnectedException("ELM327 UART GATT service (0xFFF0/0xFFE0) not found"),
+                TransportDisconnectedException(
+                    "ELM327 UART GATT service (0xFFF0/0xFFE0) not found (services=[$found], bond=$bond)",
+                ),
             )
             return
         }
@@ -306,6 +357,14 @@ class BleElmTransport(
                 TransportDisconnectedException("Failed to write CCCD notification descriptor"),
             )
         }
+    }
+
+    private fun refreshGattCache(gatt: BluetoothGatt) {
+        val ok = runCatching {
+            val refresh = gatt.javaClass.getMethod("refresh")
+            refresh.invoke(gatt) as? Boolean
+        }.getOrNull()
+        AppDiagLog.log("BLE", "refreshGattCache() -> $ok")
     }
 
     @SuppressLint("MissingPermission")

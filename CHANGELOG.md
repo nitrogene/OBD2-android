@@ -7,9 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-18
+
 ### Added
 - Implemented configurable pre/post-fault context capture (`FaultContextRecorder`, `RecorderModels` with `P0131` O2 B1S1 profile, `CaptureExporter` JSON/CSV) in `:core:obd`, plus local JSON/DataStore repositories, `LocationContextProvider` GPS context, `FileProvider` share/copy helper, and `RecorderForegroundService` (`connectedDevice`) in `:app`.
 - Built Jetpack Compose Material 3 UI (`ConnectScreen`, `LiveDashboardScreen`, `RecorderScreen`, `BenchScreen`, `ProfileEditorDialog`, `CaptureDetailDialog`, `AtConsoleDialog`, global transport/VBAT status banner, and `ObdViewModel`).
+- Added About dialog (`BuildConfig.BUILD_TIME`) and in-app diagnostic log (`AppDiagLog` with Copy/Share Logs) for field BLE/ELM327 debugging.
+
+### Fixed
+- Fixed Android BLE scan filtering (software filter for `0xFFF0`/`0xFFE0` or `OBD`/`ELM` name + optional All BLE toggle) and `ConnectScreen` segmented BLE/Wi-Fi layout.
+- Fixed `BleElmTransport` race between NimBLE's connect-time `onMtuChanged` and `discoverServices()` (`servicesDiscovered` guard + GATT cache refresh).
 
 ## [0.1.0] - 2026-11-18
 

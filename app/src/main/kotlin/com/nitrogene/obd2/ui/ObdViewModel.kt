@@ -24,6 +24,7 @@ import com.nitrogene.obd2.data.CaptureRepository
 import com.nitrogene.obd2.data.ProfileRepository
 import com.nitrogene.obd2.data.RecorderPreferencesRepository
 import com.nitrogene.obd2.data.RecorderSettings
+import com.nitrogene.obd2.diag.AppDiagLog
 import com.nitrogene.obd2.export.CaptureShareHelper
 import com.nitrogene.obd2.service.RecorderForegroundService
 import com.nitrogene.obd2.transport.ble.BleDiscoveredDevice
@@ -124,13 +125,17 @@ class ObdViewModel @Inject constructor(
         _selectedProtocol.value = protocol
     }
 
-    fun startBleScan() {
+    fun startBleScan(includeAll: Boolean = false) {
         bleScanJob?.cancel()
         _discoveredDevices.value = emptyList()
         _isScanningBle.value = true
-        _statusMessage.value = "Scanning for OBD2-ELM327..."
+        _statusMessage.value = if (includeAll) {
+            "Scanning all BLE devices..."
+        } else {
+            "Scanning for OBD2-ELM327..."
+        }
         bleScanJob = viewModelScope.launch {
-            bleScanner.scanDevices()
+            bleScanner.scanDevices(includeAll = includeAll)
                 .catch { e ->
                     _isScanningBle.value = false
                     _statusMessage.value = e.message ?: "BLE scan failed"
@@ -156,6 +161,7 @@ class ObdViewModel @Inject constructor(
                 transportManager.connect(transport)
                 initializeElmSession()
             }.onFailure { e ->
+                AppDiagLog.log("VM", "connectBle failed: ${e.message}")
                 _statusMessage.value = "BLE connect error: ${e.message}"
             }
         }

@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,25 +16,32 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nitrogene.obd2.core.obd.transport.TransportState
+import com.nitrogene.obd2.diag.AppDiagLog
 import com.nitrogene.obd2.ui.ObdViewModel
 import com.nitrogene.obd2.ui.screens.BenchScreen
 import com.nitrogene.obd2.ui.screens.ConnectScreen
@@ -93,6 +101,41 @@ private fun Obd2AppShell(
 
     val extendedUnlocked by viewModel.extendedUnlocked.collectAsStateWithLifecycle()
     val consoleLog by viewModel.consoleLog.collectAsStateWithLifecycle()
+    var showAboutDialog by rememberSaveable { mutableStateOf(false) }
+
+    if (showAboutDialog) {
+        val context = LocalContext.current
+        AlertDialog(
+            onDismissRequest = { showAboutDialog = false },
+            title = { Text("OBD2 Companion — About") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})\n" +
+                            "Built: ${BuildConfig.BUILD_TIME}\n" +
+                            "Package: ${BuildConfig.APPLICATION_ID}",
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(
+                            onClick = { AppDiagLog.copyToClipboard(context) },
+                        ) {
+                            Text("Copy Logs")
+                        }
+                        TextButton(
+                            onClick = { AppDiagLog.shareText(context) },
+                        ) {
+                            Text("Share Logs")
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAboutDialog = false }) {
+                    Text("OK")
+                }
+            },
+        )
+    }
 
     val transportLabel = when (val state = transportState) {
         is TransportState.Disconnected -> "Disconnected"
@@ -109,6 +152,7 @@ private fun Obd2AppShell(
             TransportStatusBanner(
                 transportLabel = transportLabel,
                 voltageLabel = voltageLabel,
+                onAboutClick = { showAboutDialog = true },
             )
         },
         bottomBar = {
@@ -139,7 +183,7 @@ private fun Obd2AppShell(
                     isScanningBle = isScanningBle,
                     discoveredDevices = discoveredDevices,
                     onSelectProtocol = viewModel::selectProtocol,
-                    onStartBleScan = viewModel::startBleScan,
+                    onStartBleScan = { includeAll -> viewModel.startBleScan(includeAll) },
                     onStopBleScan = viewModel::stopBleScan,
                     onConnectBle = { viewModel.connectBle(it.device) },
                     onConnectWifi = viewModel::connectWifi,
@@ -192,6 +236,7 @@ private fun Obd2AppShell(
 private fun TransportStatusBanner(
     transportLabel: String,
     voltageLabel: String,
+    onAboutClick: () -> Unit,
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
@@ -201,8 +246,9 @@ private fun TransportStatusBanner(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+                .padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = transportLabel,
@@ -213,6 +259,12 @@ private fun TransportStatusBanner(
                 text = "VBAT: $voltageLabel",
                 style = MaterialTheme.typography.labelLarge,
             )
+            IconButton(onClick = onAboutClick) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = "About",
+                )
+            }
         }
     }
 }

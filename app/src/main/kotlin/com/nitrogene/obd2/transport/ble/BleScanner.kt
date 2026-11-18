@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Context
@@ -23,6 +22,7 @@ data class BleDiscoveredDevice(
     val address: String,
     val rssi: Int,
     val device: BluetoothDevice,
+    val matchesObd2: Boolean = true,
 )
 
 /**
@@ -32,7 +32,7 @@ class BleScanner @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
     @SuppressLint("MissingPermission")
-    fun scanDevices(): Flow<BleDiscoveredDevice> = callbackFlow {
+    fun scanDevices(includeAll: Boolean = false): Flow<BleDiscoveredDevice> = callbackFlow {
         if (!BlePermissions.hasScanPermissions(context)) {
             close(SecurityException("Missing BLE scan permissions"))
             return@callbackFlow
@@ -46,24 +46,32 @@ class BleScanner @Inject constructor(
             return@callbackFlow
         }
 
-        val filters = listOf(
-            ScanFilter.Builder().setServiceUuid(ParcelUuid(BleConstants.SERVICE_FFF0)).build(),
-            ScanFilter.Builder().setServiceUuid(ParcelUuid(BleConstants.SERVICE_FFE0)).build(),
-        )
         val settings = ScanSettings.Builder()
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .build()
 
+        val fff0 = ParcelUuid(BleConstants.SERVICE_FFF0)
+        val ffe0 = ParcelUuid(BleConstants.SERVICE_FFE0)
+
         val callback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 val device = result.device ?: return
-                val name = result.scanRecord?.deviceName ?: device.name ?: BleConstants.DEFAULT_DEVICE_NAME
+                val uuids = result.scanRecord?.serviceUuids.orEmpty()
+                val rawName = result.scanRecord?.deviceName ?: device.name
+                val matchesUuid = fff0 in uuids || ffe0 in uuids
+                val matchesName = rawName != null &&
+                    (rawName.contains("OBD", ignoreCase = true) ||
+                        rawName.contains("ELM", ignoreCase = true))
+                val matchesObd2 = matchesUuid || matchesName
+                if (!includeAll && !matchesObd2) return
+
                 trySend(
                     BleDiscoveredDevice(
-                        name = name,
+                        name = rawName ?: if (matchesObd2) BleConstants.DEFAULT_DEVICE_NAME else "Unnamed BLE",
                         address = device.address,
                         rssi = result.rssi,
                         device = device,
+                        matchesObd2 = matchesObd2,
                     ),
                 )
             }
@@ -73,7 +81,7 @@ class BleScanner @Inject constructor(
             }
         }
 
-        scanner.startScan(filters, settings, callback)
+        scanner.startScan(null, settings, callback)
         awaitClose {
             runCatching { scanner.stopScan(callback) }
         }
