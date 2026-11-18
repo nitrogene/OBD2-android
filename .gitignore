@@ -1,0 +1,30 @@
+# Android / Gradle
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+bin/
+gen/
+out/
+build/
+.gradle/
+local.properties
+
+# IntelliJ / Android Studio
+.idea/
+*.iml
+*.ipr
+*.iws
+.navigation/
+captures/
+
+# Python / uv / pytest
+.venv/
+.pytest_cache/
+__pycache__/
+*.pyc
+
+# OS / Misc
+.DS_Store
+Thumbs.db
