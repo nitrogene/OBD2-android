@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Implemented configurable pre/post-fault context capture (`FaultContextRecorder`, `RecorderModels` with `P0131` O2 B1S1 profile, `CaptureExporter` JSON/CSV) in `:core:obd`, plus local JSON/DataStore repositories, `LocationContextProvider` GPS context, `FileProvider` share/copy helper, and `RecorderForegroundService` (`connectedDevice`) in `:app`.
+
 ## [0.1.0] - 2026-11-18
 
 ### Added

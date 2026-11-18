@@ -22,12 +22,12 @@
 - [x] Add K-Line / KWP2000 polling cadence guard (`<= 8` PIDs for `10,400 baud` targets like 2003 Daewoo Kalos).
 
 ## Phase 4 — Configurable Pre/Post-Fault Context Capture
-- [ ] Implement editable local JSON DTC-to-PID rule profiles via `kotlinx.serialization` (including reference `P0131` O2 B1S1 profile) and Jetpack DataStore for recorder preferences.
-- [ ] Implement rolling in-memory ring buffer (`T_pre` configurable, e.g. `15–300 s`) + post-fault capture window (`T_post`, e.g. `10–120 s`) in `:core:obd`, persisted as local JSON files on completion.
-- [ ] Implement `ForegroundService` (`connectedDevice` type) with persistent notification (*Armed* / *Triggered* state + *Mark Event* / *Stop* actions) to keep polling and recording alive in background / screen-off.
-- [ ] Implement automatic triggers (new confirmed/pending DTC, MIL bit, PID threshold) + manual "Capture Now / Mark Event" trigger.
-- [ ] Implement self-contained JSON + tabular CSV export via `FileProvider` (Android Share Sheet + one-tap "Copy JSON for AI") including metadata, VIN, DTCs, `Mode 02` Freeze Frame, and `t_rel_ms` time-series.
-- [ ] Capture optional GPS coordinates (best-effort location context, e.g. lat/lon/altitude/GPS speed) alongside PID samples / fault triggers to enrich incident diagnostics.
+- [x] Implement editable local JSON DTC-to-PID rule profiles via `kotlinx.serialization` (including reference `P0131` O2 B1S1 profile) and Jetpack DataStore for recorder preferences.
+- [x] Implement rolling in-memory ring buffer (`T_pre` configurable, e.g. `15–300 s`) + post-fault capture window (`T_post`, e.g. `10–120 s`) in `:core:obd`, persisted as local JSON files on completion.
+- [x] Implement `ForegroundService` (`connectedDevice` type) with persistent notification (*Armed* / *Triggered* state + *Mark Event* / *Stop* actions) to keep polling and recording alive in background / screen-off.
+- [x] Implement automatic triggers (new confirmed/pending DTC, MIL bit, PID threshold) + manual "Capture Now / Mark Event" trigger.
+- [x] Implement self-contained JSON + tabular CSV export via `FileProvider` (Android Share Sheet + one-tap "Copy JSON for AI") including metadata, VIN, DTCs, `Mode 02` Freeze Frame, and `t_rel_ms` time-series.
+- [x] Capture optional GPS coordinates (best-effort location context, e.g. lat/lon/altitude/GPS speed) alongside PID samples / fault triggers to enrich incident diagnostics.
 
 ## Phase 5 — UI & `VIRTUAL_BENCH` / Vehicle Validation
 - [ ] Build Jetpack Compose Material 3 UI with 4-tab `NavigationBar` (`Connect`, `Live`, `Recorder`, `Bench`), modal/sub-screens (`ProfileEditor`, `CaptureDetail`, `AT Console`), and global transport/VBAT status banner.
