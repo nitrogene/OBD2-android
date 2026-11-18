@@ -7,8 +7,8 @@
 ---
 
 ## Phase 1 — Android Project Bootstrap & CI
-- [ ] Initialize multi-module Gradle (Kotlin DSL) project: `:core:obd` (pure Kotlin/JVM) + `:app` (Android `minSdk 26`, `targetSdk 35`, Jetpack Compose Material 3, Coroutines/`Flow`, Hilt with KSP, `kotlinx.serialization`, Jetpack DataStore).
-- [ ] Set up GitHub Actions CI (`.github/workflows/ci.yml`) running `./gradlew test` and `./gradlew lint`.
+- [x] Initialize multi-module Gradle (Kotlin DSL) project: `:core:obd` (pure Kotlin/JVM) + `:app` (Android `minSdk 26`, `targetSdk 35`, Jetpack Compose Material 3, Coroutines/`Flow`, Hilt with KSP, `kotlinx.serialization`, Jetpack DataStore).
+- [x] Set up GitHub Actions CI (`.github/workflows/ci.yml`) running `./gradlew test` and `./gradlew lint`.
 
 ## Phase 2 — Transport Layer (`BLE` & `Wi-Fi TCP`)
 - [ ] Implement unified `ElmTransport` interface (in `:core:obd`) with clean connect/disconnect lifecycle, single-active-transport discipline, and `>` prompt framing.
