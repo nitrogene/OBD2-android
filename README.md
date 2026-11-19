@@ -6,14 +6,20 @@ Companion Android diagnostic application for [`nitrogene/OBD2-firmware`](https:/
 
 ## 1. Purpose & Key Capabilities
 
-- **Dual Wireless Transport:**
-  - **BLE 5.0 GATT (`OBD2-ELM327`):** Service `0xFFF0` (`0xFFF1` Notify / `0xFFF2` Write) and alias `0xFFE0` (`0xFFE1`), ATT MTU negotiation (`>= 247` bytes), ~8.1 req/s.
-  - **Wi-Fi SoftAP / TCP (`OBD2-Scanner`):** Static IP `192.168.42.1:35000` (`TCP_NODELAY`), bound to the Wi-Fi `Network` via `ConnectivityManager` (no cellular routing conflict), ~136.9 req/s.
-- **ELM327 v1.5 & KWP2000 Client:** Full initialization, live PID polling, DTC read/clear (`Mode 03`/`04`/`07`), Freeze Frame (`Mode 02`), VIN (`0902`), extended mode (`AT+EXT`), and `VIRTUAL_BENCH` simulator control (`AT+SIM:...`).
+- **Dual Wireless Transport (Single-Active-Transport Discipline):**
+  - **BLE 5.0 GATT (`OBD2-ELM327`):** Service `0xFFF0` (`0xFFF1` Notify / `0xFFF2` Write) and alias `0xFFE0` (`0xFFE1`), ATT MTU `256` negotiation, runtime permissions (`BLUETOOTH_SCAN` / `BLUETOOTH_CONNECT` on API 31+, `ACCESS_FINE_LOCATION` on API <= 30), and automatic GATT cache refresh.
+  - **Wi-Fi SoftAP / TCP (`OBD2-Scanner`):** Static IP `192.168.42.1:35000` (`TCP_NODELAY`), bound to the non-VPN Wi-Fi `Network` via `ConnectivityManager` (with `WifiNetworkSpecifier` fallback on Android 10+ and cellular routing prevention).
+  - Global **Disconnect** action cleanly stops live polling, BLE scanning, and background recording before releasing the transport link.
+- **ELM327 v1.5 & KWP2000 Client:**
+  - Full initialization (`ATZ`..`ATSP0..9`..`0100`..`ATDP`..`ATRV`), CAN single-frame / ISO-TP multi-frame / K-Line response parsing, live PID streaming (`Mode 01`), DTC read/clear (`Mode 03`/`07`/`04` with confirmation), Freeze Frame (`Mode 02`), VIN (`0902`), and K-Line `10,400 baud` cadence guard (`<= 8` PIDs).
+  - Security-gated extended mode (`AT+EXT=1` and state-modifying SIDs require explicit user confirmation) plus `VIRTUAL_BENCH` simulator controls (`AT+SIM:...`), `AT+STATS`, and raw AT console.
 - **Configurable Pre/Post-Fault Context Capture:**
-  - Editable DTC-to-PID rule profiles (including reference `P0131` O2 sensor profile for 2003 Daewoo Kalos K-Line).
-  - Rolling in-memory ring buffer (`T_pre`, e.g. `60 s`) + post-event window (`T_post`, e.g. `30 s`) triggered by new DTCs, custom thresholds, or manual event marking.
-  - Self-contained **JSON / CSV export** ready for AI assistant or mechanic analysis.
+  - Editable local JSON DTC-to-PID rule profiles (including reference `P0131` O2 B1S1 profile for 2003 Daewoo Kalos K-Line) and DataStore preferences (`T_pre` `15–300 s`, `T_post` `10–120 s`, optional GPS context).
+  - Rolling in-memory ring buffer + post-event window running inside a `connectedDevice` `ForegroundService` with persistent notification (*Armed* / *Triggered*, *Mark Event*, *Stop*).
+  - Automatic triggers (new confirmed/pending DTC, MIL bit, sustained PID threshold) + manual *Mark Event* trigger, with optional best-effort GPS coordinates (`LocationManager`).
+  - Local JSON persistence and self-contained **JSON + tabular CSV export** via `FileProvider` Share Sheet and one-tap **Copy JSON for AI**.
+- **Jetpack Compose Material 3 UI:**
+  - 4-tab `NavigationBar` (`Connect`, `Live`, `Recorder`, `Bench`), global transport / `V_BAT` status banner, profile editor / capture detail / AT console dialogs, and an **About** dialog with build timestamp and copyable diagnostic logs.
 
 ---
 
@@ -25,9 +31,13 @@ Companion Android diagnostic application for [`nitrogene/OBD2-firmware`](https:/
 
 ---
 
-## 3. Planned Tech Stack & Repository Layout
+## 3. Architecture, Build & Test Workflows
 
-- **Language & UI:** Kotlin, Jetpack Compose (Material 3), Coroutines / `Flow`
-- **Build System:** Gradle (Kotlin DSL), Android SDK (`minSdk 26`, `targetSdk 35`)
-- **Testing:** JUnit5 / MockK unit tests (protocol framing, PID decoders, ring buffer state machine) + `VIRTUAL_BENCH` (LilyGO T-Display S3) integration tests
+- **Modules:**
+  - `:core:obd` — Pure Kotlin/JVM module containing `ElmTransport` / `TransportManager`, `ElmPromptFramer`, `ElmInitializer`, CAN/ISO-TP/K-Line parsers & decoders, `PollingCadenceGuard`, `DiagnosticSecurityGate`, `FaultContextRecorder`, and `CaptureExporter`.
+  - `:app` — Android application (`minSdk 26`, `targetSdk 35`) with Jetpack Compose Material 3, Hilt + KSP, Coroutines/`Flow`, `kotlinx.serialization`, Jetpack DataStore, native BLE/Wi-Fi transports, and `RecorderForegroundService`.
+- **Build & Verification Commands:**
+  - Unit tests (pure-Kotlin `:core:obd` + `:app` JVM tests): `./gradlew test`
+  - Android Lint: `./gradlew lint`
+  - Debug APK: `./gradlew assembleDebug` (outputs `app/build/outputs/apk/debug/app-debug.apk`)
 - **Governance & Reviews:** [`AGENTS.md`](AGENTS.md), [`todo.md`](todo.md), [`CHANGELOG.md`](CHANGELOG.md), and [`review/guidelines.md`](review/guidelines.md)
