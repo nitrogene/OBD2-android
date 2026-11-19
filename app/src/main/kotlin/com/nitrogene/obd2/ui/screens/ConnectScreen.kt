@@ -93,7 +93,10 @@ fun ConnectScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Connection", style = MaterialTheme.typography.headlineSmall)
+                Text(
+                    text = if (transportState is TransportState.Connected) "Connected" else "Connect",
+                    style = MaterialTheme.typography.headlineSmall,
+                )
                 TextButton(onClick = { showProtocolSelector = !showProtocolSelector }) {
                     Text("ATSP${selectedProtocol.spCode}")
                 }

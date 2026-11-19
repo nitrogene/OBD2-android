@@ -5,6 +5,7 @@ package com.nitrogene.obd2.transport.wifi
  */
 object WifiConstants {
     const val DEFAULT_SSID: String = "OBD2-Scanner"
+    const val DEFAULT_PASSWORD: String = "12345678"
     const val DEFAULT_HOST: String = "192.168.42.1"
     const val DEFAULT_PORT: Int = 35_000
 }

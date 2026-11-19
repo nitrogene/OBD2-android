@@ -5,6 +5,7 @@ import com.nitrogene.obd2.core.obd.transport.ElmTransport
 import com.nitrogene.obd2.core.obd.transport.TransportDisconnectedException
 import com.nitrogene.obd2.core.obd.transport.TransportState
 import com.nitrogene.obd2.core.obd.transport.TransportType
+import com.nitrogene.obd2.diag.AppDiagLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -15,9 +16,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import java.io.InputStream
 import java.io.OutputStream
-import java.net.InetSocketAddress
 import java.net.Socket
 
 /**
@@ -49,15 +50,19 @@ class WifiTcpElmTransport(
     override suspend fun connect() {
         val endpoint = "$host:$port"
         _state.value = TransportState.Connecting(TransportType.WIFI_TCP, endpoint)
+        AppDiagLog.log("WIFI", "Connecting TCP -> $endpoint")
 
         try {
             val (_, socketFactory) = networkBinder.acquireWifiSocketFactory()
-            val tcpSocket = withContext(Dispatchers.IO) {
-                socketFactory.createSocket().apply {
-                    tcpNoDelay = true
-                    connect(InetSocketAddress(host, port), connectTimeoutMs)
+            AppDiagLog.log("WIFI", "Opening bound socket to $host:$port")
+            val tcpSocket = withTimeout(connectTimeoutMs.toLong()) {
+                withContext(Dispatchers.IO) {
+                    socketFactory.createSocket(host, port).apply {
+                        tcpNoDelay = true
+                    }
                 }
             }
+            AppDiagLog.log("WIFI", "TCP connected to $endpoint (local=${tcpSocket.localPort}, remote=${tcpSocket.port})")
             socket = tcpSocket
             outputStream = tcpSocket.getOutputStream()
             startReaderLoop(tcpSocket.getInputStream())

@@ -178,6 +178,7 @@ class ObdViewModel @Inject constructor(
                 transportManager.connect(transport)
                 initializeElmSession()
             }.onFailure { e ->
+                AppDiagLog.log("VM", "connectWifi failed: ${e.message}")
                 _statusMessage.value = "Wi-Fi TCP connect error: ${e.message}"
             }
         }
@@ -185,6 +186,12 @@ class ObdViewModel @Inject constructor(
 
     fun disconnect() {
         stopLivePolling()
+        stopBleScan()
+        if (recorderState.value is RecorderState.Armed || recorderState.value is RecorderState.Triggered) {
+            val stopIntent = Intent(appContext, RecorderForegroundService::class.java)
+                .setAction(RecorderForegroundService.ACTION_STOP)
+            appContext.startService(stopIntent)
+        }
         viewModelScope.launch {
             transportManager.disconnect()
             _sessionInfo.value = null

@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -152,6 +153,9 @@ private fun Obd2AppShell(
             TransportStatusBanner(
                 transportLabel = transportLabel,
                 voltageLabel = voltageLabel,
+                canDisconnect = transportState is TransportState.Connected ||
+                    transportState is TransportState.Connecting,
+                onDisconnectClick = viewModel::disconnect,
                 onAboutClick = { showAboutDialog = true },
             )
         },
@@ -236,6 +240,8 @@ private fun Obd2AppShell(
 private fun TransportStatusBanner(
     transportLabel: String,
     voltageLabel: String,
+    canDisconnect: Boolean,
+    onDisconnectClick: () -> Unit,
     onAboutClick: () -> Unit,
 ) {
     Surface(
@@ -259,6 +265,14 @@ private fun TransportStatusBanner(
                 text = "VBAT: $voltageLabel",
                 style = MaterialTheme.typography.labelLarge,
             )
+            if (canDisconnect) {
+                IconButton(onClick = onDisconnectClick) {
+                    Icon(
+                        imageVector = Icons.Default.LinkOff,
+                        contentDescription = "Disconnect",
+                    )
+                }
+            }
             IconButton(onClick = onAboutClick) {
                 Icon(
                     imageVector = Icons.Default.Info,
